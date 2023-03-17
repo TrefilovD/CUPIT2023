@@ -1,0 +1,7 @@
+https://tmsmm.ru/blog/sistema-ranjirovania-v-instagram?ysclid=lf7cfjv0h8910386925
+https://habr.com/ru/company/vk/blog/461927/
+http://www.machinelearning.ru/wiki/images/archive/8/89/20191214192345%21Voron-ML-Ranking-slides.pdf
+https://smm-wiki.com/ranzhirovanie-v-instagram.html?ysclid=lf7f30lzk9914059807
+https://arxiv.org/pdf/1606.07792.pdf
+https://github.com/crownpku/text2vec?ysclid=lf8kp7hvcl505169971 - text2vec
+https://text2vec.org/api.html
