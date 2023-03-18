@@ -4,12 +4,14 @@ import json
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 
+from torch.nn.utils.rnn import pad_sequence
+
 
 class Dataset(Dataset):
     def __init__(self, 
         root: str, # path to directory
-        transfrom,
-        purpose,
+        transform=None,
+        purpose='train',
         random_state=42,
         val_size=0.25
     ) -> None:
@@ -21,7 +23,7 @@ class Dataset(Dataset):
         self.val_size = val_size
 
         self.data = self.load_data()
-        self.transform = transfrom
+        self.transform = transform
 
 
     def __len__(self):
@@ -47,19 +49,20 @@ class Dataset(Dataset):
     def __getitem__(self, ind):
         sample = self.data[ind]
         targets = []
-        post = sample['text']
+        if self.transform:
+            post = self.transform(sample['text'])
         comments = []
         if self.purpose != 'test':
             # comments = [(self.transform(comm['text']), comm['score']) for comm in sample['comments']]
-            comments += [c['text'] for c in sample['comments']]
+            if self.transform:
+                comments += [self.transform(c['text']) for c in sample['comments']]
+            else:
+                comments += [c['text'] for c in sample['comments']]
             targets += [label_to_levels(c['score'], 5) for c in sample['comments']]
         # post = self.transform(post)
 
-        return post, comments, targets
+        return post, pad_sequence(comments).permute(1, 0), targets
     
-
-def collatefn(batch):
-    post, comments, targets = batch
 
 
 # Sebastian Raschka 2020-2021

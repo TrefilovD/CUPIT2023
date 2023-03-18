@@ -1,11 +1,14 @@
 import nltk
 import torch
+import time
 
-from transformers import BertTokenizer, BertModel, DistilBertModel
+from transformers import BertTokenizer, BertModel, DistilBertModel, DistilBertTokenizer
 from dataset import Dataset
 from model import WrapBert, BaseModel, RankingModel
 from proccesing import preprocces_text, creating_features
 from loss import CoralLoss
+from dataloader import get_dataloader
+from process import train
 
 from torch.nn.utils.rnn import pad_sequence
 
@@ -17,16 +20,16 @@ from sklearn.decomposition import PCA
 
 
 def setup():
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = DistilBertTokenizer.from_pretrained("distilbert-base-uncased")
     lemmatize = nltk.WordNetLemmatizer()
     procces_text = preprocces_text(tokenizer, lemmatize)
 
     bert = DistilBertModel.from_pretrained('distilbert-base-uncased', output_hidden_states = True)
     emmbedings = WrapBert(bert, procces_text)
 
-    dataset = Dataset('./data', emmbedings, 'train')
-    post, comments, scores = dataset[0]
-    # print(text.shape, [c[0].shape for c in coms])
+    dataset = Dataset('./data', purpose='train', transform=procces_text)
+
+    dataloader = get_dataloader(dataset)
 
     # POSTS = [dataset[i][0] for i in range(40000, 50000)]# len(dataset))]
     # pca_post = PCA(50).fit(POSTS)
@@ -36,34 +39,27 @@ def setup():
     # pca_coms = PCA(50).fit(COMS)
     # del COMS
 
-    model = RankingModel(bert)
+    device = 'cpu'
+    model = RankingModel(bert).to(device)
     optimizer = torch.optim.Adam(model.parameters())
     criterion = CoralLoss()
 
-    # indexed_tokens = []
-    # for comment in comments:
-    #     text, indexed_token, _ = procces_text(comment)
-    #     indexed_tokens.append(torch.tensor(indexed_token))
+    max_epoch = 50
+    for epoch in range(max_epoch):
+        epoch_time = time.time()
+        loss = train(model, dataloader, optimizer, criterion, device)
 
-    _, post_indexed_tokens, _ = procces_text(post)
-    post_indexed_tokens = torch.tensor(post_indexed_tokens, dtype=torch.int32)
-    post_indexed_tokens = pad_sequence([post_indexed_tokens]).permute(1, 0)
+        print(f"epoch {epoch} time {time.time()-epoch_time} loss {loss}")
 
-    _, com_indexed_tokens, _ = procces_text(comments[0])
-    com_indexed_tokens = torch.tensor(com_indexed_tokens, dtype=torch.int32)
-    com_indexed_tokens = pad_sequence([com_indexed_tokens]).permute(1, 0)
+    # out = model(post_indexed_tokens, com_indexed_tokens, 
+    #             torch.tensor([len(t) for t in post_indexed_tokens]), torch.tensor([len(t) for t in com_indexed_tokens]))
 
-    # scores = torch.stack(scores)
+    # optimizer.zero_grad()
+    # loss = criterion(out, scores[0].unsqueeze(0))
+    # loss.backward()
+    # optimizer.step()
 
-    out = model(post_indexed_tokens, com_indexed_tokens, 
-                torch.tensor([len(t) for t in post_indexed_tokens]), torch.tensor([len(t) for t in com_indexed_tokens]))
-
-    optimizer.zero_grad()
-    loss = criterion(out, scores[0].unsqueeze(0))
-    loss.backward()
-    optimizer.step()
-
-    print(loss)
+    # print(loss)
 
     print("SUCCESS")
 

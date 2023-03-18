@@ -292,7 +292,13 @@ class RankingModel(nn.Module):
         else:
             self.loss = loss
 
-    def forward(self, post_word_seq, com_word_seq, post_seq_len, com_seq_len):
+    def forward(self, 
+                inp
+        ):
+        if True:
+            return self.forwardv2(inp)
+
+        post_word_seq, com_word_seq, post_seq_len, com_seq_len = inp
         # mask
         post_max_seq_len = torch.max(post_seq_len)
         post_mask = seq_mask(post_seq_len, post_max_seq_len)  # [b,msl]
@@ -336,3 +342,30 @@ class RankingModel(nn.Module):
         # out = self.softmax(logits)
 
         return logits
+    
+    def forwardv2(self, inp):
+        post, word_seq, seq_len = inp
+
+        max_seq_len = torch.max(seq_len)
+        mask = seq_mask(seq_len, max_seq_len)  # [b,msl]
+
+        # e = self.drop(self.embed(word_seq))  # [b,msl]->[b,msl,e]
+        e = self.embed(word_seq)  # [b,msl]->[b,msl,e]
+        p = self.embed(post)
+
+        e = e + p
+
+        r = self.rnn(e, seq_len)  # [b,msl,e]->[b,msl,h*2]
+
+        att = self.fc_att(r).squeeze(-1)  # [b,msl,h*2]->[b,msl]
+        att = mask_softmax(att, mask)  # [b,msl]
+        r_att = torch.sum(att.unsqueeze(-1) * r, dim=1)  # [b,h*2]
+
+        r_avg = mask_mean(r, mask)  # [b,h*2]
+        r_max = mask_max(r, mask)  # [b,h*2]
+        r = torch.cat([r_avg, r_max, r_att], dim=-1)  # [b,h*6]
+
+        f = self.drop(self.act2(self.fc2(r)))  # [b,h*6]->[b,h]
+        logits = self.out(f).squeeze(-1)  # [b,h]->[b]
+
+        return logits 

@@ -1,4 +1,5 @@
 import re
+import torch
 import nltk
 nltk.download("stopwords") # поддерживает удаление стоп-слов
 
@@ -16,7 +17,7 @@ class preprocces_text():
     def __call__(self, text):        
         #удаляем неалфавитные символы
         text = text.lower().replace("ё", "е")
-        text = re.sub('((www\.[^\s]+)|(https?://[^\s]+))', 'URL', text)
+        text = re.sub('((www\.[^\s]+)|(https?://[^\s]+))', '[URL]', text)
         text = re.sub('@[^\s]+', '[USER]', text)
         text = re.sub('[^a-zA-Zа-яА-Я1-9]+', ' ', text)
         text = re.sub(' +', ' ', text)
@@ -32,7 +33,8 @@ class preprocces_text():
 
         assert len(text) > 0
         
-        return text, indexed_tokens, segments_ids
+        # return text, indexed_tokens, segments_ids
+        return torch.tensor(indexed_tokens, dtype=torch.int32)
 
 
 def creating_features(post, coms, pca=None):
