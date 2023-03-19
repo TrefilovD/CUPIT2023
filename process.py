@@ -12,9 +12,9 @@ def train(model, dataloader, optimizer, criterion, device='cuda'):
     for (post, comments, seq_len, target) in pbar:
         # out = model(post_word_seq, com_word_seq, post_seq_len, com_seq_len)
         inp = [post, comments, seq_len]
-        out = model(inp)
+        out = model(inp).reshape(dataloader.batch_size, 5, 5)
         optimizer.zero_grad()
-        loss = criterion(out, target.reshape(-1, 4))
+        loss = criterion(out, target)
         loss.backward()
         epoch_loss += loss.detach()
 

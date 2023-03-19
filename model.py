@@ -264,17 +264,22 @@ class RankingModel(nn.Module):
         padding_idx = 0
         embed_dim = 768
         num_classes = 5
-        num_layers = 2
+        num_layers = 5
         hidden_dim = 50
         dropout = 0.2
+        bidirectional = True
 
         self.embed = nn.Embedding.from_pretrained(
                 pretrained_embed.embeddings.word_embeddings.weight, freeze=False)
         # self.embed.padding_idx = padding_idx
 
-        self.rnn = DynamicLSTM(
-            embed_dim, hidden_dim, num_layers=num_layers,
-            dropout=dropout, bidirectional=True)
+        # self.rnn = DynamicLSTM(
+        #     embed_dim * 4, hidden_dim, num_layers=num_layers,
+        #     dropout=dropout, bidirectional=True)
+
+        self.rnn = nn.LSTM(
+            embed_dim * 4, hidden_dim, num_layers, bias=True,
+            batch_first=True, dropout=dropout, bidirectional=bidirectional)
 
         self.fc_att = nn.Linear(hidden_dim * 2, 1)
 
@@ -283,9 +288,11 @@ class RankingModel(nn.Module):
         self.fc2 = nn.Linear(hidden_dim * 6, hidden_dim)
         self.act2 = nn.ReLU()
         self.drop = nn.Dropout(dropout)
-        self.out = CoralLayer(hidden_dim, num_classes) # nn.Linear(hidden_dim, num_classes)
+        # self.out = CoralLayer(hidden_dim, num_classes)
+        self.out = nn.Linear(hidden_dim, num_classes)
 
         self.softmax = nn.Softmax()
+        self.sigmoid = nn.Sigmoid()
 
         if loss is None:
             self.loss = nn.BCEWithLogitsLoss()
@@ -350,12 +357,13 @@ class RankingModel(nn.Module):
         mask = seq_mask(seq_len, max_seq_len)  # [b,msl]
 
         # e = self.drop(self.embed(word_seq))  # [b,msl]->[b,msl,e]
-        e = self.embed(word_seq)  # [b,msl]->[b,msl,e]
-        p = self.embed(post)
+        e = self.drop(self.embed(word_seq))  # [b,msl]->[b,msl,e]
+        p = self.drop(self.embed(post))
 
-        e = e + p
+        e = torch.cat((e, e * p, torch.abs(e - p), p), dim=2)
 
-        r = self.rnn(e, seq_len)  # [b,msl,e]->[b,msl,h*2]
+        # r = self.rnn(e, seq_len)  # [b,msl,e]->[b,msl,h*2]
+        r = self.rnn(e)[0]
 
         att = self.fc_att(r).squeeze(-1)  # [b,msl,h*2]->[b,msl]
         att = mask_softmax(att, mask)  # [b,msl]
@@ -367,5 +375,7 @@ class RankingModel(nn.Module):
 
         f = self.drop(self.act2(self.fc2(r)))  # [b,h*6]->[b,h]
         logits = self.out(f).squeeze(-1)  # [b,h]->[b]
+
+        logits = self.sigmoid(logits)
 
         return logits 

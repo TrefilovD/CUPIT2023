@@ -58,7 +58,8 @@ class Dataset(Dataset):
                 comments += [self.transform(c['text']) for c in sample['comments']]
             else:
                 comments += [c['text'] for c in sample['comments']]
-            targets += [label_to_levels(c['score'], 5) for c in sample['comments']]
+            # targets += [label_to_levels(c['score'], 5) for c in sample['comments']]
+            targets += [c['score'] for c in sample['comments']]
         # post = self.transform(post)
 
         return post, pad_sequence(comments).permute(1, 0), targets

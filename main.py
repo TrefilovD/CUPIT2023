@@ -41,8 +41,9 @@ def setup():
 
     device = 'cpu'
     model = RankingModel(bert).to(device)
-    optimizer = torch.optim.Adam(model.parameters())
-    criterion = CoralLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0003)
+    # criterion = CoralLoss()
+    criterion = torch.nn.CrossEntropyLoss()
 
     max_epoch = 50
     for epoch in range(max_epoch):

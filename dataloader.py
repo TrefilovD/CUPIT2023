@@ -39,7 +39,8 @@ def collate_fn(batch):
         post.append(p)
         new_s = [s[i] for i in ind]
         # comment.append(new_c)
-        score.append(torch.stack(new_s))
+        # score.append(torch.stack(new_s))
+        score.append(torch.tensor(new_s))
 
     seq_len = torch.tensor([len(c) for c in comment], dtype=torch.int32)
     comment = pad_sequence(comment).permute(1, 0).reshape(len(batch) * 5, -1)
